@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ... existing keys ... -->
+    
+    <!-- Required for "When In Use" location access -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>We need your location to show you on the map and provide navigation assistance.</string>
+    
+    <!-- Required if you need background location updates -->
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>We need your location to show you on the map, provide navigation, and notify you of nearby points of interest.</string>
+    
+    <!-- Legacy key for iOS 10 and earlier (include for backward compatibility) -->
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>We need your location to show you on the map, provide navigation, and notify you of nearby points of interest.</string>
+    
+    <!-- Only needed if your app specifically requires precise location -->
+    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+    <dict>
+        <key>YourPurposeKey</key>
+        <string>We need your precise location temporarily to accurately navigate you to your destination.</string>
+    </dict>
+    
+    <!-- Only needed if your app uses location in the background -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+    </array>
+</dict>
+</plist> 
