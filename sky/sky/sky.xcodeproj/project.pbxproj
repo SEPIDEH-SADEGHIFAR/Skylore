@@ -23,6 +23,16 @@
 		53C270152DA9830E006F869E /* sky.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sky.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		53D916D02DF72F09005B19EF /* Exceptions for "sky" folder in "sky" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 53C270142DA9830E006F869E /* sky */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		537D5ACE2DBA3D2200D7F12F /* location */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -31,6 +41,9 @@
 		};
 		53C270172DA9830E006F869E /* sky */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				53D916D02DF72F09005B19EF /* Exceptions for "sky" folder in "sky" target */,
+			);
 			path = sky;
 			sourceTree = "<group>";
 		};
