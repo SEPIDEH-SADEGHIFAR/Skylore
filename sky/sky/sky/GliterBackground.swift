@@ -13,7 +13,7 @@ struct GlitteringStarsBackground: View {
     init() {
         let width = UIScreen.main.bounds.width
         let height = UIScreen.main.bounds.height
-        _stars = State(initialValue: (0..<500).map { _ in
+        _stars = State(initialValue: (0..<700).map { _ in
             Star(
                 position: CGPoint(x: CGFloat.random(in: 0...width),
                                   y: CGFloat.random(in: 0...height)),
