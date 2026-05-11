@@ -5,19 +5,18 @@ struct MainStarView: View {
     @StateObject private var viewModel = StarViewModel()
     @State private var isShowingAddStarForm = false
 
-    // Zoom & pan
+    // Zoom & pan state
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
-
-    // Auto-zoom target
     @State private var focusCenter: CGPoint?
 
     private let minScale: CGFloat = 0.5
     private let maxScale: CGFloat = 5.0
-    private let deClusterScale: CGFloat = 2.0 // scale threshold to stop clustering
+    private let deClusterScale: CGFloat = 2.0
 
+    // Clustering logic
     private func groupStars(intoClusters stars: [Star], threshold: CGFloat, in size: CGSize) -> [[Star]] {
         var clusters: [[Star]] = []
         var ungrouped = stars
@@ -36,13 +35,18 @@ struct MainStarView: View {
 
     var body: some View {
         ZStack {
+            // Background
             GlitteringStarsBackground()
+            
+            // Interactive Star Map
             GeometryReader { geo in
                 ZStack {
                     if scale >= deClusterScale {
+                        // Render individual stars when zoomed in
                         ForEach(viewModel.stars) { star in
                             let pos = viewModel.position(for: star.coordinate, in: geo.size)
                             let glow = milkyWayColor(from: star.coordinate)
+                            
                             ZStack {
                                 Circle()
                                     .fill(glow)
@@ -58,10 +62,10 @@ struct MainStarView: View {
                                 y: pos.y * scale + offset.height
                             )
                             .contextMenu {
-                                Button("Remove Star") {
-                                    withAnimation(.easeInOut) {
-                                        viewModel.removeStar(star)
-                                    }
+                                Button(role: .destructive) {
+                                    withAnimation(.easeInOut) { viewModel.removeStar(star) }
+                                } label: {
+                                    Label("Remove Star", systemImage: "trash")
                                 }
                             }
                             .onTapGesture {
@@ -69,6 +73,7 @@ struct MainStarView: View {
                             }
                         }
                     } else {
+                        // Render clustered stars when zoomed out
                         let clusters = groupStars(
                             intoClusters: viewModel.stars,
                             threshold: 50 / scale,
@@ -82,9 +87,7 @@ struct MainStarView: View {
                                 y: rawPositions.map { $0.y }.reduce(0, +) / CGFloat(rawPositions.count)
                             )
                             let center: CGPoint = {
-                                if let fc = focusCenter, cluster.count > 1 {
-                                    return fc
-                                }
+                                if let fc = focusCenter, cluster.count > 1 { return fc }
                                 return CGPoint(x: avg.x * scale + offset.width, y: avg.y * scale + offset.height)
                             }()
 
@@ -103,16 +106,17 @@ struct MainStarView: View {
                                 }
                                 .position(center)
                                 .contextMenu {
-                                    Button("Remove Star") {
-                                        withAnimation(.easeInOut) {
-                                            viewModel.removeStar(star)
-                                        }
+                                    Button(role: .destructive) {
+                                        withAnimation(.easeInOut) { viewModel.removeStar(star) }
+                                    } label: {
+                                        Label("Remove Star", systemImage: "trash")
                                     }
                                 }
                                 .onTapGesture {
                                     viewModel.selectedStar = star
                                 }
                             } else {
+                                // Draw a cluster node
                                 let glow = milkyWayColor(from: cluster[0].coordinate)
                                 ZStack {
                                     Group {
@@ -121,6 +125,12 @@ struct MainStarView: View {
                                     }
                                     .blur(radius: 12)
                                     Circle().fill(Color.white).frame(width: 20, height: 20)
+                                    
+                                    // Show number of stars in cluster
+                                    Text("\(cluster.count)")
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.black)
                                 }
                                 .position(center)
                                 .onTapGesture {
@@ -140,60 +150,63 @@ struct MainStarView: View {
                         }
                     }
                 }
-                .contentShape(Rectangle())
+                .contentShape(Rectangle()) // Ensures the whole screen captures gestures
                 .gesture(
                     SimultaneousGesture(
                         MagnificationGesture()
-                            .onChanged { value in
-                                let newScale = min(max(minScale, lastScale * value), maxScale)
-                                scale = newScale
-                            }
-                            .onEnded { _ in
-                                lastScale = scale
-                                focusCenter = nil
-                            },
+                            .onChanged { value in scale = min(max(minScale, lastScale * value), maxScale) }
+                            .onEnded { _ in lastScale = scale; focusCenter = nil },
                         DragGesture()
                             .onChanged { gesture in
-                                offset = CGSize(
-                                    width: lastOffset.width + gesture.translation.width,
-                                    height: lastOffset.height + gesture.translation.height
-                                )
+                                offset = CGSize(width: lastOffset.width + gesture.translation.width, height: lastOffset.height + gesture.translation.height)
                             }
-                            .onEnded { _ in
-                                lastOffset = offset
-                                focusCenter = nil
-                            }
+                            .onEnded { _ in lastOffset = offset; focusCenter = nil }
                     )
                 )
             }
 
+            // MARK: Glassmorphic Floating HUD Controls
             VStack {
                 Spacer()
                 HStack {
+                    // Reset View Button
                     Button {
-                        withAnimation(.easeInOut) {
-                            scale = 1
-                            lastScale = 1
-                            offset = .zero
-                            lastOffset = .zero
-                            focusCenter = nil
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                            scale = 1; lastScale = 1; offset = .zero; lastOffset = .zero; focusCenter = nil
                         }
                     } label: {
-                        Image(systemName: "arrow.counterclockwise")
+                        Image(systemName: "scope")
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(.cyan)
                             .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .shadow(color: .cyan.opacity(0.3), radius: 10)
                     }
+                    
                     Spacer()
+                    
+                    // Add Star Button
                     Button {
                         isShowingAddStarForm.toggle()
                     } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(.white)
-                            .padding()
+                        HStack {
+                            Image(systemName: "sparkles")
+                            Text("New Star")
+                                .fontWeight(.bold)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 20)
+                        .background(
+                            LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .clipShape(Capsule())
+                        .shadow(color: .blue.opacity(0.5), radius: 15)
                     }
                 }
+                .padding(.horizontal, 30)
+                .padding(.bottom, 40)
             }
         }
         .sheet(isPresented: $isShowingAddStarForm) {
@@ -201,8 +214,8 @@ struct MainStarView: View {
                 viewModel.addStar(coordinate: coordinate, name: name, description: description, date: date)
             }
         }
-        .sheet(item: $viewModel.selectedStar) {
-            StarDetailsSheet(star: $0)
+        .sheet(item: $viewModel.selectedStar) { star in
+            StarDetailsSheet(star: star)
         }
     }
 }

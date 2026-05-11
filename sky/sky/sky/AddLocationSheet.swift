@@ -16,115 +16,110 @@ struct AddLocationSheet: View {
     var onComplete: (CLLocationCoordinate2D) -> Void
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                TapLocationMapView(selectedCoordinate: $selectedCoordinate,
-                                   region: $region,
-                                   centerOnUserLocation: centerOnUserLocation)
-                    .ignoresSafeArea()
-                
-                // Location Button
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            centerOnUserLocation = true
-                            // Reset after use
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                centerOnUserLocation = false
-                            }
-                        }) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 22))
-                                .padding()
-                                .background(Color.white)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
-                        }
-                        .padding()
-                    }
-                }
-                
-                // Search Bar
-                VStack {
-                    HStack {
-                        TextField("Search location...", text: $searchText)
-                            .padding(10)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
-                            .padding(.horizontal)
-                            .onSubmit {
-                                searchLocation()
-                            }
-                        
-                        Button(action: searchLocation) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.blue)
-                        }
-                        .padding(.trailing)
-                    }
-                    .padding(.top)
-                    
-                    if showSearchResults && !searchResults.isEmpty {
-                        List {
-                            ForEach(searchResults, id: \.self) { mapItem in
-                                Button(action: {
-                                    selectLocation(mapItem)
-                                }) {
-                                    VStack(alignment: .leading) {
-                                        Text(mapItem.name ?? "Unknown Location")
-                                            .font(.headline)
-                                        if let address = mapItem.placemark.thoroughfare {
-                                            Text(address)
-                                                .font(.subheadline)
-                                                .foregroundColor(.gray)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .frame(height: min(CGFloat(searchResults.count * 60), 300))
-                        .background(Color(.systemBackground))
-                        .cornerRadius(10)
-                        .padding()
+        ZStack(alignment: .top) {
+            TapLocationMapView(selectedCoordinate: $selectedCoordinate,
+                               region: $region,
+                               centerOnUserLocation: centerOnUserLocation)
+                .ignoresSafeArea()
+            
+            // Floating Top HUD
+            VStack(spacing: 15) {
+                // Header Bar
+                HStack {
+                    Button(action: { presentationMode.wrappedValue.dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
                     }
                     
                     Spacer()
-                }
-            }
-            .navigationTitle("Choose Location")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Cancel Button
-                ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: {
-                            presentationMode.wrappedValue.dismiss()
-                        }) {
-                            Text("Cancel")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                // "Add Star" Button – only enabled if a coordinate was selected
-                ToolbarItem(placement: .navigationBarTrailing) {
+                    
                     Button(action: {
                         if let coordinate = selectedCoordinate {
                             onComplete(coordinate)
                             presentationMode.wrappedValue.dismiss()
                         }
                     }) {
-                        Text("Add Star")
-                            .padding()
-                            .frame(width: 120, height: 40)
-                            .background(selectedCoordinate != nil ? Color.blue : Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(50)
+                        Text("Confirm")
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(selectedCoordinate != nil ? Color.cyan : Color.gray.opacity(0.5))
+                            .foregroundColor(selectedCoordinate != nil ? .black : .white.opacity(0.5))
+                            .clipShape(Capsule())
                     }
-                    .disabled(selectedCoordinate == nil) // Disable if no selection
+                    .disabled(selectedCoordinate == nil)
+                }
+                .padding(.horizontal)
+                .padding(.top, 10)
+
+                // Search Bar
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundColor(.gray)
+                    TextField("Search sectors...", text: $searchText)
+                        .foregroundColor(.white)
+                        .onSubmit { searchLocation() }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(15)
+                .padding(.horizontal)
+                
+                // Search Results Dropdown
+                if showSearchResults && !searchResults.isEmpty {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(searchResults, id: \.self) { mapItem in
+                                Button(action: { selectLocation(mapItem) }) {
+                                    VStack(alignment: .leading) {
+                                        Text(mapItem.name ?? "Unknown Location")
+                                            .font(.headline).foregroundColor(.white)
+                                        if let address = mapItem.placemark.thoroughfare {
+                                            Text(address).font(.caption).foregroundColor(.gray)
+                                        }
+                                    }
+                                    .padding()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                Divider().background(Color.white.opacity(0.2))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 250)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(15)
+                    .padding(.horizontal)
+                }
+            }
+
+            // Location Button (Bottom Right)
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        centerOnUserLocation = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { centerOnUserLocation = false }
+                    }) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.cyan)
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 5)
+                    }
+                    .padding()
                 }
             }
         }
+        .preferredColorScheme(.dark)
     }
+    
+    // MARK: - Search Logic
     
     private func searchLocation() {
         guard !searchText.isEmpty else {

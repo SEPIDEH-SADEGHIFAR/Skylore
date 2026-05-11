@@ -4,67 +4,71 @@ struct StarDetailsSheet: View {
     let star: Star
     @Environment(\.dismiss) var dismiss
 
-    // Date formatter to display date nicely
     private var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
+        formatter.dateStyle = .long
         return formatter.string(from: star.date)
     }
 
     var body: some View {
         NavigationView {
             ZStack {
+                // Dynamic Nebula Gradient
                 LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.1, green: 0.3, blue: 0.5),
-                        Color(red: 0.2, green: 0.8, blue: 0.6),
-                        Color(red: 0.5, green: 0.4, blue: 0.7)
-                    ]),
+                    gradient: Gradient(colors: [milkyWayColor(from: star.coordinate).opacity(0.6), Color.black]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
+                
+                GlitteringStarsBackground().opacity(0.3)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Meet \(star.name)")
-                        .font(.largeTitle)
-                        .bold()
-                        .padding(.top)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text(star.name.uppercased())
+                            .font(.system(size: 36, weight: .black, design: .monospaced))
+                            .foregroundColor(.white)
+                            .shadow(color: milkyWayColor(from: star.coordinate), radius: 10)
 
-                    Text("Born at Latitude: \(star.coordinate.latitude)")
-                        .font(.title3)
-                    Text("and Longitude: \(star.coordinate.longitude)")
-                        .font(.title3)
+                        HStack(spacing: 15) {
+                            VStack(alignment: .leading) {
+                                Text("LATITUDE").font(.caption2).foregroundColor(.gray).tracking(2)
+                                Text(String(format: "%.4f", star.coordinate.latitude)).font(.system(.body, design: .monospaced))
+                            }
+                            VStack(alignment: .leading) {
+                                Text("LONGITUDE").font(.caption2).foregroundColor(.gray).tracking(2)
+                                Text(String(format: "%.4f", star.coordinate.longitude)).font(.system(.body, design: .monospaced))
+                            }
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
 
-                    Text("Memory Date: \(formattedDate)")
-                        .font(.title3)
-                        .italic()
-                    
-                    Text("A memory written in the sky:")
-                        .font(.title2)
-                        .bold()
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("MEMORY LOG - \(formattedDate.uppercased())")
+                                .font(.caption2).foregroundColor(.gray).tracking(2)
+                            
+                            Text(star.description)
+                                .font(.body)
+                                .lineSpacing(6)
+                                .foregroundColor(Color(red: 240/255, green: 240/255, blue: 255/255))
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
 
-                    Text(star.description)
-                        .font(.body)
-
-                    Spacer()
+                    }
+                    .padding(25)
                 }
-                .padding(.leading, 5)
-                .padding()
-                .foregroundColor(Color(red: 230/255, green: 230/255, blue: 250/255))
             }
-            .navigationTitle("Your Star’s Story")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Your Star’s Story")
-                        .font(.headline)
-                        .foregroundColor(Color(red: 230/255, green: 230/255, blue: 250/255))
-                }
-            }
-            .navigationBarItems(trailing: Button("Done") { dismiss() }
-                                    .foregroundColor(.white))
+            .navigationBarItems(trailing: Button(action: { dismiss() }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.8))
+            })
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        .preferredColorScheme(.dark)
     }
 }
