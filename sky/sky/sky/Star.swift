@@ -1,5 +1,49 @@
 import Foundation
 import CoreLocation
+import SwiftUI
+
+enum StarCategory: String, Codable, CaseIterable {
+    case memory, adventure, home, love, food, nature, work, dream
+
+    var label: String {
+        switch self {
+        case .memory:    return "Memory"
+        case .adventure: return "Adventure"
+        case .home:      return "Home"
+        case .love:      return "Love"
+        case .food:      return "Food"
+        case .nature:    return "Nature"
+        case .work:      return "Work"
+        case .dream:     return "Dream"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .memory:    return "clock.arrow.circlepath"
+        case .adventure: return "map"
+        case .home:      return "house.fill"
+        case .love:      return "heart.fill"
+        case .food:      return "fork.knife"
+        case .nature:    return "leaf.fill"
+        case .work:      return "briefcase.fill"
+        case .dream:     return "moon.stars.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .memory:    return .cyan
+        case .adventure: return .orange
+        case .home:      return .yellow
+        case .love:      return .pink
+        case .food:      return Color(hue: 0.08, saturation: 0.75, brightness: 1.0)
+        case .nature:    return .green
+        case .work:      return .blue
+        case .dream:     return .purple
+        }
+    }
+}
 
 struct Star: Identifiable, Codable {
     let id: UUID
@@ -7,54 +51,79 @@ struct Star: Identifiable, Codable {
     let description: String
     let coordinate: CLLocationCoordinate2D
     let date: Date
+    var category: StarCategory
 
     enum CodingKeys: String, CodingKey {
-        case id, name, description, latitude, longitude, date
+        case id, name, description, latitude, longitude, date, category
     }
 
-    init(id: UUID = UUID(), name: String, description: String, coordinate: CLLocationCoordinate2D, date: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        description: String,
+        coordinate: CLLocationCoordinate2D,
+        date: Date = Date(),
+        category: StarCategory = .memory
+    ) {
         self.id = id
         self.name = name
         self.description = description
         self.coordinate = coordinate
         self.date = date
+        self.category = category
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        description = try container.decode(String.self, forKey: .description)
-        let latitude = try container.decode(Double.self, forKey: .latitude)
-        let longitude = try container.decode(Double.self, forKey: .longitude)
-        coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        date = try container.decode(Date.self, forKey: .date)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decode(UUID.self,   forKey: .id)
+        name        = try c.decode(String.self, forKey: .name)
+        description = try c.decode(String.self, forKey: .description)
+        let lat     = try c.decode(Double.self, forKey: .latitude)
+        let lon     = try c.decode(Double.self, forKey: .longitude)
+        coordinate  = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        date        = try c.decode(Date.self,   forKey: .date)
+        category    = (try? c.decode(StarCategory.self, forKey: .category)) ?? .memory
     }
 
     func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        try container.encode(description, forKey: .description)
-        try container.encode(coordinate.latitude, forKey: .latitude)
-        try container.encode(coordinate.longitude, forKey: .longitude)
-        try container.encode(date, forKey: .date)
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id,                   forKey: .id)
+        try c.encode(name,                 forKey: .name)
+        try c.encode(description,          forKey: .description)
+        try c.encode(coordinate.latitude,  forKey: .latitude)
+        try c.encode(coordinate.longitude, forKey: .longitude)
+        try c.encode(date,                 forKey: .date)
+        try c.encode(category,             forKey: .category)
     }
 }
+
 
 class StarViewModel: ObservableObject {
     @Published var stars: [Star] = []
     @Published var selectedStar: Star?
 
-    private let storageKey = "stars"
+    private let storageKey = "stars_v2"
 
-    init() {
-        loadStars()
+    init() { loadStars() }
+
+    // MARK: - Stats
+    var totalStars: Int { stars.count }
+
+    var regionCount: Int {
+        // Approximate unique regions via 5-degree coordinate tiles
+        Set(stars.map {
+            "\(Int($0.coordinate.latitude  / 5) * 5),\(Int($0.coordinate.longitude / 5) * 5)"
+        }).count
     }
 
-    func addStar(coordinate: CLLocationCoordinate2D, name: String, description: String, date: Date) {
-        let newStar = Star(name: name, description: description, coordinate: coordinate, date: date)
-        stars.append(newStar)
+    // MARK: - CRUD
+    func addStar(coordinate: CLLocationCoordinate2D,
+                 name: String,
+                 description: String,
+                 date: Date,
+                 category: StarCategory) {
+        stars.append(Star(name: name, description: description,
+                          coordinate: coordinate, date: date, category: category))
         saveStars()
     }
 
@@ -63,39 +132,25 @@ class StarViewModel: ObservableObject {
         saveStars()
     }
 
+    // Maps a geographic coordinate to a 2D canvas point
     func position(for coordinate: CLLocationCoordinate2D, in size: CGSize) -> CGPoint {
-        let x = (coordinate.longitude + 180) / 360 * size.width
-        let y = (1 - (coordinate.latitude + 90) / 180) * size.height
-        return CGPoint(x: x, y: y)
+        CGPoint(
+            x: (coordinate.longitude + 180) / 360 * size.width,
+            y: (1 - (coordinate.latitude + 90) / 180) * size.height
+        )
     }
 
+    // MARK: - Persistence
     private func saveStars() {
-        if let encodedData = try? JSONEncoder().encode(stars) {
-            UserDefaults.standard.set(encodedData, forKey: storageKey)
+        if let data = try? JSONEncoder().encode(stars) {
+            UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 
     private func loadStars() {
-        if let savedData = UserDefaults.standard.data(forKey: storageKey),
-           let decodedStars = try? JSONDecoder().decode([Star].self, from: savedData) {
-            stars = decodedStars
-        }
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let decoded = try? JSONDecoder().decode([Star].self, from: data)
+        else { return }
+        stars = decoded
     }
 }
-
-/*// MARK: - Milky Way Color Helper
-func milkyWayColor(from coordinate: CLLocationCoordinate2D) -> Color {
-    let seed = abs(sin(coordinate.latitude * 14.313 + coordinate.longitude * 37.137))
-    let t = seed.truncatingRemainder(dividingBy: 1.0)
-    
-    let palette: [Color] = [
-        Color(hue: 0.6, saturation: 0.8, brightness: 1.0),  // Deep blue
-        Color(hue: 0.75, saturation: 0.7, brightness: 1.0), // Neon violet
-        Color(hue: 0.9, saturation: 0.6, brightness: 1.0),  // Pinkish
-        Color(hue: 0.12, saturation: 0.8, brightness: 1.0), // Gold
-        Color(hue: 0.5, saturation: 0.8, brightness: 1.0)   // Cyan
-    ]
-    
-    let index = Int(t * Double(palette.count)) % palette.count
-    return palette[index]
-}*/

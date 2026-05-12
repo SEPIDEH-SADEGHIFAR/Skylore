@@ -1,5 +1,3 @@
-//  TapLocationMapView.swift
-
 import SwiftUI
 import MapKit
 import CoreLocation
@@ -8,92 +6,92 @@ struct TapLocationMapView: UIViewRepresentable {
     @Binding var selectedCoordinate: CLLocationCoordinate2D?
     @Binding var region: MKCoordinateRegion
     var centerOnUserLocation: Bool = false
+    var isSatellite: Bool = false
+    var onCoordinateSelected: ((CLLocationCoordinate2D) -> Void)? = nil
 
     func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        mapView.setRegion(region, animated: false)
-        mapView.showsUserLocation = true
-        
-        // Set up location manager
+        let map = MKMapView()
+        map.delegate = context.coordinator
+        map.setRegion(region, animated: false)
+        map.showsUserLocation = true
+        map.showsCompass = false
+
         let locationManager = CLLocationManager()
         locationManager.delegate = context.coordinator
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        
-        // Request authorization
         locationManager.requestWhenInUseAuthorization()
-        
         context.coordinator.locationManager = locationManager
 
-        // Add tap gesture recognizer to the map view
-        let tapGesture = UITapGestureRecognizer(target: context.coordinator,
-                                                action: #selector(context.coordinator.handleTap(_:)))
-        mapView.addGestureRecognizer(tapGesture)
-        
-        return mapView
+        let tap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(context.coordinator.handleTap(_:))
+        )
+        map.addGestureRecognizer(tap)
+
+        return map
     }
-    
-    func updateUIView(_ uiView: MKMapView, context: Context) {
-        // Update the region when needed
-        uiView.setRegion(region, animated: true)
-        
-        // Center on user location if requested
+
+    func updateUIView(_ map: MKMapView, context: Context) {
+        map.setRegion(region, animated: true)
+        map.mapType = isSatellite ? .hybridFlyover : .mutedStandard
+
         if centerOnUserLocation {
-            context.coordinator.centerMapOnUserLocation(uiView)
+            context.coordinator.centerOnUser(map)
         }
-        
-        // Remove all annotations and add one for the selected coordinate (if available)
-        uiView.removeAnnotations(uiView.annotations)
-        if let coordinate = selectedCoordinate {
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = coordinate
-            uiView.addAnnotation(annotation)
+
+        map.removeAnnotations(map.annotations)
+        if let coord = selectedCoordinate {
+            let pin = MKPointAnnotation()
+            pin.coordinate = coord
+            map.addAnnotation(pin)
         }
     }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    // MARK: - Coordinator
     class Coordinator: NSObject, MKMapViewDelegate, CLLocationManagerDelegate {
         var parent: TapLocationMapView
         var locationManager: CLLocationManager?
-        
-        init(_ parent: TapLocationMapView) {
-            self.parent = parent
-        }
-        
-        @objc func handleTap(_ gestureRecognizer: UITapGestureRecognizer) {
-            guard let mapView = gestureRecognizer.view as? MKMapView else { return }
-            let tapPoint = gestureRecognizer.location(in: mapView)
-            let coordinate = mapView.convert(tapPoint, toCoordinateFrom: mapView)
-            
+
+        init(_ parent: TapLocationMapView) { self.parent = parent }
+
+        @objc func handleTap(_ gr: UITapGestureRecognizer) {
+            guard let map = gr.view as? MKMapView else { return }
+            let coord = map.convert(gr.location(in: map), toCoordinateFrom: map)
             DispatchQueue.main.async {
-                self.parent.selectedCoordinate = coordinate
-                self.parent.region.center = coordinate // Update region center to the tapped coordinate
+                self.parent.selectedCoordinate = coord
+                self.parent.region.center = coord
+                self.parent.onCoordinateSelected?(coord)
             }
         }
-        
-        func centerMapOnUserLocation(_ mapView: MKMapView) {
-            if let userLocation = locationManager?.location?.coordinate {
-                let region = MKCoordinateRegion(
-                    center: userLocation,
-                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                )
-                
-                DispatchQueue.main.async {
-                    self.parent.region = region
-                }
-            }
+
+        func centerOnUser(_ map: MKMapView) {
+            guard let coord = locationManager?.location?.coordinate else { return }
+            let region = MKCoordinateRegion(
+                center: coord,
+                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            )
+            DispatchQueue.main.async { self.parent.region = region }
         }
-        
-        // Handle location authorization changes
+
+        // Custom cyan star annotation
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard !(annotation is MKUserLocation) else { return nil }
+            let id = "starPin"
+            let view = (mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView)
+                ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: id)
+            view.annotation = annotation
+            view.markerTintColor = .cyan
+            view.glyphImage = UIImage(systemName: "star.fill")
+            view.animatesWhenAdded = true
+            return view
+        }
+
         func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-            switch manager.authorizationStatus {
-            case .authorizedWhenInUse, .authorizedAlways:
-                locationManager?.startUpdatingLocation()
-            default:
-                break
+            if manager.authorizationStatus == .authorizedWhenInUse
+                || manager.authorizationStatus == .authorizedAlways {
+                manager.startUpdatingLocation()
             }
         }
     }

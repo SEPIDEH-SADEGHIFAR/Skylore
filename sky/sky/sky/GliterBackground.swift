@@ -8,48 +8,42 @@ struct GlitteringStarsBackground: View {
         var opacity: Double
     }
 
-    @State private var stars: [Star] = []
-
-    init() {
-        let width = UIScreen.main.bounds.width
-        let height = UIScreen.main.bounds.height
-        _stars = State(initialValue: (0..<700).map { _ in
+    @State private var stars: [Star] = {
+        let w = UIScreen.main.bounds.width
+        let h = UIScreen.main.bounds.height
+        return (0..<350).map { _ in
             Star(
-                position: CGPoint(x: CGFloat.random(in: 0...width),
-                                  y: CGFloat.random(in: 0...height)),
-                size: CGFloat.random(in: 1...3),
-                opacity: Double.random(in: 0.6...1.0)
+                position: CGPoint(x: .random(in: 0...w), y: .random(in: 0...h)),
+                size: .random(in: 1...2.5),
+                opacity: .random(in: 0.5...1.0)
             )
-        })
-    }
+        }
+    }()
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-
             ForEach(stars) { star in
                 Circle()
                     .fill(Color.white)
                     .frame(width: star.size, height: star.size)
                     .position(star.position)
                     .opacity(star.opacity)
-                    .animation(Animation.easeInOut(duration: Double.random(in: 0.5...1.5)).repeatForever(), value: star.opacity)
             }
         }
         .ignoresSafeArea()
-        .onAppear {
-            startTwinkling()
-        }
+        .onAppear { startTwinkling() }
     }
 
     private func startTwinkling() {
         for index in stars.indices {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0...1.5)) {
-                withAnimation(Animation.easeInOut(duration: Double.random(in: 0.5...1.5)).repeatForever()) {
-                    stars[index].opacity = Double.random(in: 0.3...1.0)
+            let delay = Double.random(in: 0...2.0)
+            let duration = Double.random(in: 1.0...2.5)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                withAnimation(Animation.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
+                    stars[index].opacity = .random(in: 0.15...1.0)
                 }
             }
         }
     }
 }
-

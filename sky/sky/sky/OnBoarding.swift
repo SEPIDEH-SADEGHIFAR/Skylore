@@ -3,91 +3,111 @@ import SwiftUI
 struct OnboardingView: View {
     @Binding var hasSeenOnboarding: Bool
     @State private var currentPage = 0
-    private let totalPages = 4  // Total pages in TabView
+
+    private struct Page {
+        let icon: String
+        let title: String
+        let subtitle: String
+        let color: Color
+    }
+
+    private let pages: [Page] = [
+        Page(icon: "sparkles",
+             title: "Your Universe",
+             subtitle: "Every place that shaped you is a star waiting to be named. Begin mapping your personal constellation.",
+             color: .cyan),
+        Page(icon: "mappin.and.ellipse",
+             title: "Mark Your Stars",
+             subtitle: "Tap the map, search by name, or use your location to drop a star anywhere on Earth.",
+             color: .purple),
+        Page(icon: "point.3.connected.trianglepath.dotted",
+             title: "Build Constellations",
+             subtitle: "Watch your stars connect into lines — a map of everywhere and everyone that matters to you.",
+             color: .orange)
+    ]
 
     var body: some View {
-        GeometryReader { geometry in
-            TabView(selection: $currentPage) {
-                OnboardingPage(imageName: "star",
-                               title: "Welcome!",
-                               description: "Create your own sky full of memories.")
-                    .tag(0)
-                
-                OnboardingPage(imageName: "map",
-                               title: "Choose Locations",
-                               description: "Pick places you've visited and turn them into stars.")
-                    .tag(1)
-                
-                OnboardingPage(imageName: "mappin.and.ellipse",
-                               title: "Your stars have a home!",
-                               description: "your stars will take place in your sky based on the coordinates of the locations you choose! ")
-                    .tag(2)
-                
-                VStack {
-                    Text("Let's Get Started!")
-                        .font(.title)
-                        .bold()
-                        .padding()
-                    
-                    Button(action: {
-                        hasSeenOnboarding = true
-                    }) {
-                        Text("Start Exploring")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.purple)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                            .padding(.horizontal)
+        ZStack {
+            Color(red: 0.04, green: 0.04, blue: 0.09).ignoresSafeArea()
+            GlitteringStarsBackground().opacity(0.7)
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                TabView(selection: $currentPage) {
+                    ForEach(pages.indices, id: \.self) { i in
+                        pageContent(pages[i]).tag(i)
                     }
                 }
-                .tag(3)
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            .gesture(
-                DragGesture()
-                    .onEnded { value in
-                        let threshold: CGFloat = 50
-                        if value.translation.width < -threshold {
-                            // Swiped left: go to next page
-                            withAnimation {
-                                currentPage = min(currentPage + 1, totalPages - 1)
-                            }
-                        } else if value.translation.width > threshold {
-                            // Swiped right: go to previous page
-                            withAnimation {
-                                currentPage = max(currentPage - 1, 0)
-                            }
-                        }
-                    }
-            )
-        }
-        .frame(width: 350, height: 600)
-    }
-}
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(height: 460)
 
-struct OnboardingPage: View {
-    let imageName: String
-    let title: String
-    let description: String
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(height: 200)
-                .padding()
-            
-            Text(title)
-                .font(.title)
-                .bold()
-            
-            Text(description)
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                // Page indicator dots
+                HStack(spacing: 8) {
+                    ForEach(pages.indices, id: \.self) { i in
+                        Capsule()
+                            .fill(i == currentPage ? pages[currentPage].color : Color.white.opacity(0.25))
+                            .frame(width: i == currentPage ? 28 : 8, height: 8)
+                            .animation(.spring(response: 0.4), value: currentPage)
+                    }
+                }
+                .padding(.bottom, 44)
+
+                Spacer()
+
+                // CTA
+                Button {
+                    if currentPage < pages.count - 1 {
+                        withAnimation(.spring(response: 0.4)) { currentPage += 1 }
+                    } else {
+                        withAnimation { hasSeenOnboarding = true }
+                    }
+                } label: {
+                    Text(currentPage == pages.count - 1 ? "Begin My Journey" : "Next")
+                        .font(.headline)
+                        .tracking(0.5)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(pages[currentPage].color)
+                        .foregroundColor(.black)
+                        .cornerRadius(16)
+                        .shadow(color: pages[currentPage].color.opacity(0.4), radius: 20)
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 56)
+                .animation(.easeInOut(duration: 0.2), value: currentPage)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func pageContent(_ page: Page) -> some View {
+        VStack(spacing: 32) {
+            ZStack {
+                Circle()
+                    .fill(page.color.opacity(0.08))
+                    .frame(width: 220, height: 220)
+                Circle()
+                    .fill(page.color.opacity(0.14))
+                    .frame(width: 150, height: 150)
+                Image(systemName: page.icon)
+                    .font(.system(size: 62, weight: .light))
+                    .foregroundColor(page.color)
+                    .shadow(color: page.color.opacity(0.6), radius: 20)
+            }
+
+            VStack(spacing: 14) {
+                Text(page.title)
+                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+
+                Text(page.subtitle)
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 36)
+            }
         }
     }
 }

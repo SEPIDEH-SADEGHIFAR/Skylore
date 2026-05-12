@@ -1,24 +1,20 @@
 import SwiftUI
 import CoreLocation
+import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = StarViewModel()
-    @State private var isShowingAddStarForm = false
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
 
     var body: some View {
         Group {
-                    if hasSeenOnboarding {
-                        MainStarView()
-                    } else {
-                        OnboardingView(hasSeenOnboarding: $hasSeenOnboarding)
-                    }
-                }
+            if hasSeenOnboarding {
+                MainStarView()
+            } else {
+                OnboardingView(hasSeenOnboarding: $hasSeenOnboarding)
             }
         }
-
-
-
+    }
+}
 // MARK: - Milky Way Color Helper
 func milkyWayColor(from coordinate: CLLocationCoordinate2D) -> Color {
     let seed = abs(sin(coordinate.latitude * 14.313 + coordinate.longitude * 37.137))
